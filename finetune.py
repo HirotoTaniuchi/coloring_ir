@@ -67,7 +67,6 @@ if __name__ == '__main__':
 
     # 辞書型変数にまとめる
     dataloaders_dict = {"train": train_dataloader, "val": val_dataloader}
-    # print(model)
 
 
     # 初期設定 # Setup seeds
@@ -76,8 +75,9 @@ if __name__ == '__main__':
     random.seed(1234)
 
 
-    # モデルの学習
+    # モデルの設定
     model = torch.hub.load('pytorch/vision:v0.10.0', 'deeplabv3_resnet50', pretrained=True) # deeplabv3のロード
+    # print(model)
     criterion = ICRLoss(aux_weight=0.4)  # 損失関数の設定
     optimizer = optim.SGD([
         {'params': model.backbone.parameters(), 'lr': 1e-3},

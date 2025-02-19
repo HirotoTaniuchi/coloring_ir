@@ -6,6 +6,8 @@ from torch import nn, optim
 
 def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epochs):
 
+    print("net", net)
+
     # GPUが使えるかを確認
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("使用デバイス：", device)
@@ -79,7 +81,9 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epoc
 
                 # 順伝搬（forward）計算
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = net(imges)
+                    outputs = net(imges)['out']
+                    print("outputs", outputs)
+                    print("anno_class_imges.shape", anno_class_imges.shape)
                     loss = criterion(outputs, anno_class_imges.long()) / batch_multiplier
 
                     # 訓練時はバックプロパゲーション
@@ -90,7 +94,7 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epoc
                         if (iteration % 10 == 0):  # 10iterに1度、lossを表示
                             t_iter_finish = time.time()
                             duration = t_iter_finish - t_iter_start
-                            print('イテレーション {} || Loss: {:.4f} || 10iter: {:.4f} sec.'.format(
+                            print('iteration {} || Loss: {:.4f} || 10iter: {:.4f} sec.'.format(
                                 iteration, loss.item()/batch_size*batch_multiplier, duration))
                             t_iter_start = time.time()
 
