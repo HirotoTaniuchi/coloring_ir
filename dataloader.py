@@ -26,9 +26,9 @@ def make_datapath_list(rootpath):
     annopath_template = osp.join(rootpath, 'labels', '%s.png')
 
     # 訓練と検証、それぞれのファイルのID（ファイル名）を取得する
-    train_id_names = osp.join(rootpath , 'train_removed.txt')
+    train_id_names = osp.join(rootpath, 'train_removed.txt')
     print("train_id_names", train_id_names)
-    val_id_names = osp.join(rootpath , 'val.txt')
+    val_id_names = osp.join(rootpath, 'val.txt')
     print("val_id_names", val_id_names)
 
     # 訓練データの画像ファイルとアノテーションファイルへのパスリストを作成
