@@ -23,7 +23,7 @@ class ICRLoss(nn.Module):
     def forward(self, outputs, targets):
         """
         損失関数の計算。
-        deeplabv3の出力OrderedDictをTensorに変換する必要がある↓
+        入力時deeplabv3の出力(OrderedDict型)をTensorに変換しておく必要がある↓
 
         --All pre-trained models expect input images normalized in the same way,
         i.e. mini-batches of 3-channel RGB images of shape (N, 3, H, W),
@@ -54,7 +54,13 @@ class ICRLoss(nn.Module):
 
         # crossentropylossの引数に合わせるために、targetをsqueezeする
         targets = torch.squeeze(targets)
-        loss = nn.CrossEntropyLoss(outputs['out'], targets, ignore_index=255)
-        loss_aux = nn.CrossEntropyLoss(outputs['out'], targets, ignore_index=255)
+        # print("outputs.shape=", outputs.shape, "ouputs.dtype=", outputs.dtype)
+        # print("targets.shape=", targets.shape, "targets.dtype=", targets.dtype)
+        # loss = nn.CrossEntropyLoss(outputs, targets, ignore_index=255)
+        # これはだめ!! # https://stackoverflow.com/questions/52946920/bool-value-of-tensor-with-more-than-one-value-is-ambiguous-in-pytorch
+        loss = nn.CrossEntropyLoss()
+        loss_aux = nn.CrossEntropyLoss()
+        loss = loss(outputs, targets)
+        loss_aux = loss_aux(outputs, targets)
 
         return loss + self.aux_weight * loss_aux

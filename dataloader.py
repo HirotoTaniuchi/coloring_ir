@@ -173,8 +173,8 @@ class MFNetDataset(data.Dataset):
 
 if __name__ == "__main__":
     # (RGB)の色の平均値と標準偏差
-    color_mean = (0.485, 0.456, 0.406) ###あとで確認！！
-    color_std = (0.229, 0.224, 0.225) ###あとで確認！！
+    color_mean = (0.232, 0.267, 0.233)
+    color_std = (0.173, 0.173, 0.172)
 
     # データセット作成
     train_dataset = MFNetDataset(train_img_list, train_anno_list, phase="train", transform=DataTransform(
