@@ -1,1 +1,15 @@
+20241001_tomosensei/
+20250128_preliminary/
 20250208_ItoV^/
+20250227_CycleGAN-and-pix2pix/
+20250227_pix2pix/
+20250227_TICCGAN/
+20250228_MFNet/
+
+__pycache__/
+*.pyc
+*.png
+checkpoints/
+logs/
+results/
+output/
