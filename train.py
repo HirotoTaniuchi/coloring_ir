@@ -3,8 +3,23 @@ import torch
 import time
 import pandas as pd
 from torch import nn, optim
+import tqdm
+import datetime
+
+
+from tensorboardX import SummaryWriter
+
+def now():
+    dt_now = datetime.datetime.now()
+    return str(dt_now.year) + str(dt_now.month) + str(dt_now.day) + str(dt_now.hour) + str(dt_now.minute) + str(dt_now.second)
+
 
 def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epochs):
+    """
+    current directoryにweightsフォルダがあることを前提としている
+    """
+
+    # print("net", net)
 
     # GPUが使えるかを確認
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,6 +44,7 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epoc
     batch_multiplier = 3
 
     # epochのループ
+    writer = SummaryWriter(log_dir="./logs")
     for epoch in range(num_epochs):
 
         # 開始時刻を保存
@@ -79,8 +95,12 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epoc
 
                 # 順伝搬（forward）計算
                 with torch.set_grad_enabled(phase == 'train'):
-                    outputs = net(imges)
-                    loss = criterion(outputs, anno_class_imges.long()) / batch_multiplier
+                    outputs_out = net(imges)['out']
+                    outputs_aux = net(imges)['aux']
+                    # print("outputs_aux.shape", outputs_aux.shape)
+                    # print("outputs_out.shape", outputs_out.shape)
+                    # print("anno_class_imges.shape", anno_class_imges.shape)
+                    loss = criterion(outputs_aux, anno_class_imges.long()) / batch_multiplier
 
                     # 訓練時はバックプロパゲーション
                     if phase == 'train':
@@ -90,12 +110,15 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epoc
                         if (iteration % 10 == 0):  # 10iterに1度、lossを表示
                             t_iter_finish = time.time()
                             duration = t_iter_finish - t_iter_start
-                            print('イテレーション {} || Loss: {:.4f} || 10iter: {:.4f} sec.'.format(
+                            print('iteration {} || Loss: {:.4f} || 10iter: {:.4f} sec.'.format(
                                 iteration, loss.item()/batch_size*batch_multiplier, duration))
                             t_iter_start = time.time()
 
                         epoch_train_loss += loss.item() * batch_multiplier
                         iteration += 1
+                        # if iteration == 50: 
+                        #     iteration = 1
+                        #     break
 
                     # 検証時
                     else:
@@ -112,10 +135,20 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, num_epoc
         # ログを保存
         log_epoch = {'epoch': epoch+1, 'train_loss': epoch_train_loss /
                      num_train_imgs, 'val_loss': epoch_val_loss/num_val_imgs}
+        
         logs.append(log_epoch)
+        writer.add_scalar('train_loss', logs[epoch]['train_loss'], epoch+1)
+        writer.add_scalar('val_loss', logs[epoch]['val_loss'], epoch+1)
+
         df = pd.DataFrame(logs)
         df.to_csv("log_output.csv")
 
+        if((epoch+1) % 10 == 1):
+            # ネットワークを保存する
+            torch.save(net.state_dict(), 'weights/ICRNet_' + str(epoch+1) + '_' + now() + '.pth')
+
+
     # 最後のネットワークを保存する
-    torch.save(net.state_dict(), 'weights/pspnet50_' +
-               str(epoch+1) + '.pth')
+    torch.save(net.state_dict(), 'weights/ICRNet_ ' + str(epoch+1) + '.pth')
+    
+    writer.close()

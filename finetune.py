@@ -40,7 +40,7 @@ def lambda_epoch(epoch):
 
 
 
-if __name__ == '__main__':   
+if __name__ == '__main__':
     # ファイルパスリスト作成
     rootpath = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset"
     train_img_list, train_anno_list, val_img_list, val_anno_list= make_datapath_list(
@@ -48,9 +48,8 @@ if __name__ == '__main__':
 
     # Dataset作成
     # (RGB)の色の平均値と標準偏差
-    # あとで！！！
-    color_mean = (0.485, 0.456, 0.406)
-    color_std = (0.229, 0.224, 0.225)
+    color_mean = (0.232, 0.267, 0.233)
+    color_std = (0.173, 0.173, 0.172)
 
     # データセット作成
     train_dataset = MFNetDataset(train_img_list, train_anno_list, phase="train", transform=DataTransform(
@@ -59,7 +58,7 @@ if __name__ == '__main__':
         input_size=500, color_mean=color_mean, color_std=color_std))
 
     # データローダーの作成
-    batch_size = 8
+    batch_size = 2
     train_dataloader = data.DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = data.DataLoader(
@@ -67,7 +66,6 @@ if __name__ == '__main__':
 
     # 辞書型変数にまとめる
     dataloaders_dict = {"train": train_dataloader, "val": val_dataloader}
-    # print(model)
 
 
     # 初期設定 # Setup seeds
@@ -76,17 +74,18 @@ if __name__ == '__main__':
     random.seed(1234)
 
 
-    # モデルの学習
-    model = torch.hub.load('pytorch/vision:v0.10.0', 'deeplabv3_resnet50', pretrained=True) # deeplabv3のロード
+    # モデルの設定
+    model_name = 'deeplabv3_resnet50'
+    model = torch.hub.load('pytorch/vision:v0.10.0', model_name, pretrained=True) # deeplabv3のロード
+    # print(model)
     criterion = ICRLoss(aux_weight=0.4)  # 損失関数の設定
     optimizer = optim.SGD([
         {'params': model.backbone.parameters(), 'lr': 1e-3},
         {'params': model.classifier.parameters(), 'lr': 1e-3},
         {'params': model.aux_classifier.parameters(), 'lr': 1e-2}
-        # {'params': model.aux.parameters(), 'lr': 1e-2},
     ], momentum=0.9, weight_decay=0.0001) # ファインチューニングなので、学習率は小さく
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_epoch)
-    num_epochs = 3
+    num_epochs = 50 # 1にするとバグるかも
 
 
     train_model(model, dataloaders_dict, criterion, scheduler, optimizer, num_epochs=num_epochs)

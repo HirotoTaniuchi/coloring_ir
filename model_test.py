@@ -5,8 +5,15 @@ from torchvision import transforms
 model = torch.hub.load('pytorch/vision:v0.10.0', 'deeplabv3_resnet50', pretrained=True)
 model.eval()
 
+
+
 if __name__ == '__main__':
-    # print("model", model)
+    for x in dir(model):
+        print( x, ':', type(eval("model."+x)))
+
+    print(type(model))
+
+    # help(model)
 
     # ダミーデータの作成
     batch_size = 2
@@ -15,6 +22,8 @@ if __name__ == '__main__':
     # 計算
     outputs = model(dummy_img)
     # print(outputs)
+
+
 
 if __name__ == '__main__':
     # Download an example image from the pytorch website
@@ -29,7 +38,7 @@ if __name__ == '__main__':
     input_image = input_image.convert("RGB")
     preprocess = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=[0.232, 0.267, 0.233], std=[0.173, 0.173, 0.172]),
     ])
 
     input_tensor = preprocess(input_image)
@@ -53,8 +62,8 @@ if __name__ == '__main__':
     r = Image.fromarray(output_predictions.byte().cpu().numpy()).resize(input_image.size)
     # r.putpalette(colors)
 
-    import matplotlib.pyplot as plt
-    plt.savefig("20250214_deeplab1.png")
+    # import matplotlib.pyplot as plt
+    # plt.savefig("20250214_deeplab1.png")
     # plt.show()
 
 
