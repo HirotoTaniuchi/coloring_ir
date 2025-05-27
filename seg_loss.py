@@ -41,6 +41,7 @@ class SegLoss(nn.Module):
             損失の値
         """
 
+
         c = 2.0
         d = 2.0
         f = 2.0
@@ -49,13 +50,17 @@ class SegLoss(nn.Module):
         targets = torch.squeeze(targets)
         
         # Mask to ignore class 0
-        mask = targets != 0
+        mask = (targets == 0)
+
+
+        # CE Loss
+        ce_loss = nn.CrossEntropyLoss()(outputs, targets)  # CrossEntropyLossの計算
+        ce = F.cross_entropy(outputs, targets, reduction='none')
+        # ce[mask] = 0
         
-        # Focal Loss
-        ce_loss = F.cross_entropy(outputs, targets, reduction='none')
-        ce_loss = ce_loss[mask]
-        pt = torch.exp(-ce_loss)
-        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss
+        # # Focal Loss
+        pt = torch.exp(-ce)
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce
         focal_loss = focal_loss.mean()
 
         # Dice Loss
@@ -68,16 +73,16 @@ class SegLoss(nn.Module):
         intersection = (iflat * tflat * mask_flat).sum()
         dice_loss = 1 - ((2. * intersection + smooth) / ((iflat * mask_flat).sum() + (tflat * mask_flat).sum() + smooth))
 
-        # Class-balanced Loss
-        beta = 0.999
-        class_counts = torch.bincount(targets[mask].view(-1).long(), minlength=outputs.size(1))
-        effective_num = 1.0 - torch.pow(beta, class_counts)
-        weights = (1.0 - beta) / (effective_num + 1e-8)
-        weights = weights / weights.sum() * outputs.size(1)
-        cb_loss = F.cross_entropy(outputs, targets.squeeze(1), weight=weights, reduction='none')
-        cb_loss = cb_loss.mean()
+        # # Class-balanced Loss
+        # beta = 0.999
+        # class_counts = torch.bincount(targets[mask].view(-1).long(), minlength=outputs.size(1))
+        # effective_num = 1.0 - torch.pow(beta, class_counts)
+        # weights = (1.0 - beta) / (effective_num + 1e-8)
+        # weights = weights / weights.sum() * outputs.size(1)
+        # cb_loss = F.cross_entropy(outputs, targets.squeeze(1), weight=weights, reduction='none')
+        # cb_loss = cb_loss.mean()
 
-        return d * dice_loss + f * focal_loss + c * cb_loss
+        return ce_loss + f * focal_loss + d * dice_loss # s + c * cb_loss
     
 
 if __name__ == '__main__':
@@ -97,3 +102,5 @@ if __name__ == '__main__':
     loss = criterion(outputs, targets)
     print(loss)
     print(loss.item())
+
+

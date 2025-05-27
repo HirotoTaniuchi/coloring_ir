@@ -5,10 +5,12 @@ from seg_dataloader import make_testdatapath_list
 import tqdm
 from PIL import Image
 import torch
+import collections
 
 
 def load_image(filepath):
     with Image.open(filepath) as img:
+        # print(collections.Counter(np.array(img).flatten()))
         return np.array(img)
 
 def calculate_iou(pred, target, num_classes):
@@ -97,10 +99,15 @@ def calculate_accuracy(pred_dir, target_dir, file_list, num_classes=9):
         pred_path = os.path.join(pred_dir, filename + ".png")
         target_path = os.path.join(target_dir, filename + ".png")
         
+        # print(filename)
         pred = load_image(pred_path)
+
         target = load_image(target_path)
         
         accuracies = calculate_pixel_accuracy(torch.tensor(pred), torch.tensor(target), num_classes)
+        
+        # print(filename, "accuracies", accuracies[0:4])
+        
         
         for cls in range(num_classes):
             correct_pixels, total_pixels = accuracies[cls]
@@ -112,42 +119,38 @@ def calculate_accuracy(pred_dir, target_dir, file_list, num_classes=9):
     return mean_accuracies
 
 
-# def calculate_accuracy(pred_dir, target_dir, file_list, num_classes=9):
-#     all_accuracies = []
-#     with open(file_list, 'r') as f:
-#         filenames = [line.strip() for line in f]
-    
-#     for filename in tqdm.tqdm(filenames):
-#         pred_path = os.path.join(pred_dir, filename + ".png")
-#         target_path = os.path.join(target_dir, filename + ".png")
-        
-#         pred = load_image(pred_path)
-#         target = load_image(target_path)
-        
-#         accuracies = calculate_pixel_accuracy(torch.tensor(pred), torch.tensor(target), num_classes)
-#         all_accuracies.append(accuracies)
-    
-#     all_accuracies = np.array(all_accuracies)
-#     print("all_accuracies", all_accuracies)
-#     mean_accuracies = np.nanmean(all_accuracies, axis=0)  # Calculate mean accuracy for each class
-#     return mean_accuracies
-
 
 
 if __name__ == "__main__":
-    pred_dir = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output/seg_test_202502241518/predict"
+    pred_dir = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_seg/deeplabv3plus_mobilenet_test_202505151144/predict"
     target_dir = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/labels"
     file_list = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/test_day.txt"
     
     miou = calculate_miou(pred_dir, target_dir, file_list)
-    print(f"Mean IoU: {np.nanmean(miou)}")
+    mean_iou = np.nanmean(miou)
+    miou_lines = [f"Mean IoU: {mean_iou}\n"]
     for cls, iou in enumerate(miou):
+        miou_lines.append(f"Class {cls} IoU: {iou}\n")
         print(f"Class {cls} IoU: {iou}")
-
-
-
+    print(f"Mean IoU: {mean_iou}")
 
     mean_accuracies = calculate_accuracy(pred_dir, target_dir, file_list)
-    print(f"Mean Accuracy: {np.nanmean(mean_accuracies)}")
+    mean_acc = np.nanmean(mean_accuracies)
+    acc_lines = [f"Mean Accuracy: {mean_acc}\n"]
     for cls, accuracy in enumerate(mean_accuracies):
+        acc_lines.append(f"Class {cls} Accuracy: {accuracy}\n")
         print(f"Class {cls} Accuracy: {accuracy}")
+    print(f"Mean Accuracy: {mean_acc}")
+
+    # readme.mdへの記録
+    readme_path = os.path.join(os.path.dirname(pred_dir), "readme.md")
+    with open(readme_path, "a") as f:
+        f.write("# Segmentation Evaluation Results\n\n")
+        f.write(f"**pred_dir:** `{pred_dir}`\n\n")
+        f.write(f"**target_dir:** `{target_dir}`\n\n")
+        f.write(f"**file_list:** `{file_list}`\n\n")
+        f.write("## IoU\n")
+        f.writelines(miou_lines)
+        f.write("\n## Accuracy\n")
+        f.writelines(acc_lines)
+        f.write("\n---\n\n")

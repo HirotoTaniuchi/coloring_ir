@@ -6,6 +6,7 @@
 20250227_pix2pix/
 20250227_TICCGAN/
 20250228_MFNet/
+20250507_deeplabv3_tutorial/
 
 __pycache__/
 *.pyc
@@ -13,7 +14,8 @@ __pycache__/
 checkpoints/
 logs/
 results/
-output/
+output_img/
+output_seg/
 =======
 20250208_ItoV^/
 __pycache__/
