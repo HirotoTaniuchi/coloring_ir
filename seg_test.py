@@ -11,6 +11,7 @@ from tensorboardX import SummaryWriter
 from DeepLabV3Plus_Pytorch import network
 from seg_dataloader import make_testdatapath_list, DataTransform, MFNetDataset
 from now import now1
+from eval_seg import eval_seg
 
 
 
@@ -186,6 +187,11 @@ if __name__ == '__main__':
     # テストの実行
     for i in tqdm.tqdm(range(len(val_dataset))):
         org, anno, result = predict_savefig1(model, val_dataset, img_index=i, savedir = save_dir, img_list=test_img_list, anno_list=test_anno_list)
+    print("Segmentation Test 完了！")
+
+
+    file_list = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/test_day.txt"
+    eval_seg(pred_dir=save_dir + "/predict", target_dir=save_dir + "/target", file_list= file_list)
 
 
     # # FIDの計算

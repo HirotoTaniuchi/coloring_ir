@@ -120,12 +120,7 @@ def calculate_accuracy(pred_dir, target_dir, file_list, num_classes=9):
 
 
 
-
-if __name__ == "__main__":
-    pred_dir = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_seg/deeplabv3plus_mobilenet_test_202505151144/predict"
-    target_dir = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/labels"
-    file_list = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/test_day.txt"
-    
+def eval_seg(pred_dir, target_dir, file_list):
     miou = calculate_miou(pred_dir, target_dir, file_list)
     mean_iou = np.nanmean(miou)
     miou_lines = [f"Mean IoU: {mean_iou}\n"]
@@ -154,3 +149,9 @@ if __name__ == "__main__":
         f.write("\n## Accuracy\n")
         f.writelines(acc_lines)
         f.write("\n---\n\n")
+
+if __name__ == "__main__":
+    pred_dir = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_seg/deeplabv3plus_mobilenet_test_202505151144/predict"
+    target_dir = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/labels"
+    file_list = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/test_day.txt"
+    eval_seg(pred_dir, target_dir, file_list)
