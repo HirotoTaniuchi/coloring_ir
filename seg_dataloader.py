@@ -101,6 +101,27 @@ if __name__ == "__main__":
 # データ処理のクラスとデータオーギュメンテーションのクラスをimportする
 from torchvision.transforms import ToTensor, Compose, RandomRotation, Resize, Normalize
 from torchvision.transforms.functional import to_tensor
+from torchvision.transforms import Resize, Pad
+
+
+class ResizeWithAspectAndPad:
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, img):
+        w, h = img.size
+        if w < h:
+            new_w = self.size
+            new_h = int(h * self.size / w)
+        else:
+            new_h = self.size
+            new_w = int(w * self.size / h)
+        img = img.resize((new_w, new_h), Image.BILINEAR)
+        pad_w = self.size - new_w if new_w < self.size else 0
+        pad_h = self.size - new_h if new_h < self.size else 0
+        padding = (0, 0, pad_w, pad_h)
+        img = Pad(padding)(img)
+        return img
 
 
 class DataTransform():
@@ -125,16 +146,18 @@ class DataTransform():
         # print("color_std", color_std)
         self.data_transform = {
             'train': Compose([
+                ResizeWithAspectAndPad(input_size),
                 # ToTensor(),  # テンソルに変換 ############ToTensorを使わない方針！つまり0-1正規化と、チャネル順入れ替えをしない方針
                 # Scale(scale=[0.5, 1.5]), 
                 # RandomRotation(degrees=(-10, 10)),
                 # RandomMirror(),
-                Resize(input_size), 
+                # Resize(input_size), 
                 # Normalize(color_mean, color_std)  # 色情報の標準化とテンソル化 
             ]),
             'val': Compose([
+                ResizeWithAspectAndPad(input_size),
                 # ToTensor(),  # テンソルに変換 ############ToTensorを使わない方針！つまり0-1正規化と、チャネル順入れ替えをしない方針
-                Resize(input_size), 
+                # Resize(input_size), 
                 # Normalize(color_mean, color_std)  # 色情報の標準化とテンソル化
             ])
         }
