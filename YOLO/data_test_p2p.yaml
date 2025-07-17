@@ -1,0 +1,5 @@
+path: /home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/mfnet_pix2pix_640x480_20250707
+train: images/train
+val: images/test
+nc: 9
+names: ['unlabeled', 'car', 'person', 'bike', 'curve', 'car_stop', 'guardrail', 'color_cone', 'bump']

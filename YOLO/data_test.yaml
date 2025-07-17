@@ -1,0 +1,5 @@
+path: /home/usrs/taniuchi/workspace/datasets/ir_seg_det_dataset
+train: images/train
+val: images/test
+nc: 9
+names: ['unlabeled', 'car', 'person', 'bike', 'curve', 'car_stop', 'guardrail', 'color_cone', 'bump']

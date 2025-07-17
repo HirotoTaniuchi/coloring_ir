@@ -1,0 +1,5 @@
+path: /home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/ugawa_test_202502272000/AAFSTNet2andSegNet2_MFNet_full_RSGAN/test_other_latest
+train: images/train
+val: images/test
+nc: 9
+names: ['unlabeled', 'car', 'person', 'bike', 'curve', 'car_stop', 'guardrail', 'color_cone', 'bump']

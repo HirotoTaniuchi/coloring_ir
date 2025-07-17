@@ -1,0 +1,5 @@
+path: /home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/images_ir_3ch
+train: images/train
+val: images/test
+nc: 9
+names: ['unlabeled', 'car', 'person', 'bike', 'curve', 'car_stop', 'guardrail', 'color_cone', 'bump']

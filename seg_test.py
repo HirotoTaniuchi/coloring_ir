@@ -134,7 +134,8 @@ def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, a
 
 if __name__ == '__main__':  
     # ファイルパスリスト作成
-    imagepath = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/images_rgb"
+    imagepath = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/mfnet_pix2pix_640x480_20250707/fake_B"
+    # imagepath = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/images_rgb" #入力
     (test_img_list, test_anno_list)= make_testdatapath_list(imagepath=imagepath)
 
     # (RGB)の色の平均値と標準偏差
@@ -146,10 +147,10 @@ if __name__ == '__main__':
         input_size=500, color_mean=color_mean, color_std=color_std))
     
     # 訓練後のモデルをロード 
-    MODEL_NAME = "deeplabv3plus_mobilenet"
+    MODEL_NAME = "deeplabv3plus_resnet101" #入力
     NUM_CLASSES = 19
     OUTPUT_SRTIDE = 16
-    PATH_TO_PTH = "/home/usrs/taniuchi/workspace/projects/coloring_ir/checkpoints/deeplabv3plus_mobilenet_202505151025/seg_100_100_202505151025.pth"
+    PATH_TO_PTH = "/home/usrs/taniuchi/workspace/projects/coloring_ir/checkpoints/deeplabv3plus_resnet101_202505142102/seg_100_100_202505142102.pth" #入力
     model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
     model.classifier.classifier = nn.Sequential(
         nn.Conv2d(304, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False),
@@ -191,7 +192,8 @@ if __name__ == '__main__':
 
 
     file_list = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/test_day.txt"
-    eval_seg(pred_dir=save_dir + "/predict", target_dir=save_dir + "/target", file_list= file_list)
+    target_dir = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/labels"
+    eval_seg(pred_dir=save_dir + "/predict", target_dir= target_dir, file_list= file_list)
 
 
     # # FIDの計算
