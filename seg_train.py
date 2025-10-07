@@ -37,7 +37,7 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, model_na
     # checkpoint/logsディレクトリのパスを引数から受け取る
     if path_cpt is None:
         str_now = now1()
-        path_cpt = f'checkpoints/{model_name}_{str_now}'
+        path_cpt = f'checkpoints/{model_name}_{str_now}_'
     if not os.path.exists(path_cpt):
         os.makedirs(path_cpt, exist_ok=True)
 
@@ -146,15 +146,17 @@ def lambda_epoch(epoch):
 if __name__ == '__main__':
     # チェックポイントとログのパスを先に宣言
     str_now = now1()
-    MODEL_NAME = "deeplabv3plus_mobilenet"
-    path_cpt = f'checkpoints/{MODEL_NAME}_{str_now}'
-    path_logs = f'logs/{MODEL_NAME}_{str_now}'
+    MODEL_NAME = "deeplabv3plus_resnet101"
+    DOMAIN = "rgb_ir" # 学習元データのドメイン（"ir" or "rgb" or "ir_3ch"）
+    path_cpt = f'checkpoints/{DOMAIN}_{MODEL_NAME}_{str_now}' # 
+    path_logs = f'logs/{DOMAIN}_{MODEL_NAME}_{str_now}'
     os.makedirs(path_cpt, exist_ok=True)
     os.makedirs(path_logs, exist_ok=True)
 
     # 設定をまとめる（パスも含める）
     config = {
         "rootpath": "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset",
+        "DOMAIN": DOMAIN,
         "gpu_id": 0,
         "color_mean": (0.232, 0.267, 0.233),
         "color_std": (0.173, 0.173, 0.172),
@@ -163,7 +165,7 @@ if __name__ == '__main__':
         "MODEL_NAME": MODEL_NAME,
         "NUM_CLASSES": 19,
         "OUTPUT_SRTIDE": 16,
-        "PATH_TO_PTH": "/home/usrs/taniuchi/workspace/projects/coloring_ir/DeepLabV3Plus_Pytorch/checkpoints/best_deeplabv3plus_mobilenet_cityscapes_os16.pth",
+        "PATH_TO_PTH": "/home/usrs/taniuchi/workspace/projects/coloring_ir/DeepLabV3Plus_Pytorch/checkpoints/best_deeplabv3plus_resnet101_cityscapes_os16.pth",
         "num_epochs": 100,
         "optimizer": {
             "lr": 1e-3,
@@ -181,9 +183,10 @@ if __name__ == '__main__':
     with open(os.path.join(path_logs, "config.yaml"), "w") as f:
         yaml.dump(config, f, allow_unicode=True)
 
-    # ...以下は元のまま...
-    rootpath = config["rootpath"]
-    train_img_list, train_anno_list, val_img_list, val_anno_list = make_datapath_list(rootpath=rootpath)
+
+    rootpath, imagepath = config["rootpath"], ("images_" + config["DOMAIN"])  ### 変更点
+    print("imagepath:", imagepath)
+    train_img_list, train_anno_list, val_img_list, val_anno_list = make_datapath_list(rootpath=rootpath, image_path=imagepath) ### 変更点
     gpu_id = config["gpu_id"]
 
     color_mean = config["color_mean"]
@@ -209,17 +212,25 @@ if __name__ == '__main__':
     torch.serialization.safe_globals([np.core.multiarray.scalar])
     model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
     model.load_state_dict(torch.load(PATH_TO_PTH, weights_only=False)['model_state'])
+    
+
+    # print(model)
+    if DOMAIN == "ir": # IR画像が1chなので、最初の畳み込み層を変更する
+        model.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        model.backbone.conv1.apply(weights_init)
+    elif DOMAIN == "rgb_ir": # RGB+IR画像が4chなので、最初の畳み込み層を変更する
+        model.backbone.conv1 = nn.Conv2d(4, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        model.backbone.conv1.apply(weights_init)
     model.classifier.classifier = nn.Sequential(
         nn.Conv2d(304, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False),
         nn.BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
         nn.ReLU(inplace=True),
         nn.Conv2d(256, 9, kernel_size=(1, 1), stride=(1, 1))
-    )
+    ) ## NFNetデータセット用に19クラス→9クラスに変更
 
-    for param in model.parameters(): param.requires_grad = True
-    # for param in model.backbone.layer3.parameters(): param.requires_grad = True
-    # for param in model.backbone.layer4.parameters(): param.requires_grad = True
-    # for param in model.classifier.parameters(): param.requires_grad = True
+
+    for param in model.parameters(): param.requires_grad = True 
+    # for param in model.backbone.layer3.parameters(): param.requires_grad = True ## もし容量不足で全層学習できない場合に使う
 
     criterion = SegLoss(aux_weight=0.4)
     num_epochs = config["num_epochs"]

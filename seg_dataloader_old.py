@@ -9,7 +9,7 @@ import pdb
 
 
 # # ファイルパスリストを作成する
-def make_datapath_list(rootpath, image_path="images_rgb"):
+def make_datapath_list(rootpath):
     """
     学習、検証の画像データとアノテーションデータへのファイルパスリストを作成する。
 
@@ -25,11 +25,11 @@ def make_datapath_list(rootpath, image_path="images_rgb"):
     """
 
     # 画像ファイルとアノテーションファイルへのパスのテンプレートを作成
-    imgpath_template = osp.join(rootpath, image_path, '%s.png')
+    imgpath_template = osp.join(rootpath,'images_rgb', '%s.png')
     annopath_template = osp.join(rootpath, 'labels', '%s.png')
 
     # 訓練と検証、それぞれのファイルのID（ファイル名）を取得する
-    train_id_names = osp.join(rootpath, 'train_day.txt') # ここでtrain_dayを指定していることに注意
+    train_id_names = osp.join(rootpath, 'train_day.txt')
     print("train_id_names", train_id_names)
     val_id_names = osp.join(rootpath, 'val.txt')
     print("val_id_names", val_id_names)
@@ -45,6 +45,8 @@ def make_datapath_list(rootpath, image_path="images_rgb"):
         train_img_list.append(img_path)
         train_anno_list.append(anno_path)
 
+    print("len(train_img_list)", len(train_img_list))
+
     # 検証データの画像ファイルとアノテーションファイルへのパスリストを作成
     val_img_list = list()
     val_anno_list = list()
@@ -55,6 +57,7 @@ def make_datapath_list(rootpath, image_path="images_rgb"):
         anno_path = (annopath_template % file_id)  # アノテーションのパス
         val_img_list.append(img_path)
         val_anno_list.append(anno_path)
+        
 
     return train_img_list, train_anno_list, val_img_list, val_anno_list
 
@@ -114,7 +117,6 @@ class ResizeWithAspectAndPad:
         self.size = size
 
     def __call__(self, img):
-        breakpoint()
         w, h = img.size
         if w < h:
             new_w = self.size
@@ -152,18 +154,18 @@ class DataTransform():
         # print("color_std", color_std)
         self.data_transform = {
             'train': Compose([
-                # ResizeWithAspectAndPad(input_size),
+                ResizeWithAspectAndPad(input_size),
                 # ToTensor(),  # テンソルに変換 ############ToTensorを使わない方針！つまり0-1正規化と、チャネル順入れ替えをしない方針
                 # Scale(scale=[0.5, 1.5]), 
                 # RandomRotation(degrees=(-10, 10)),
                 # RandomMirror(),
-                Resize(input_size), 
+                # Resize(input_size), 
                 # Normalize(color_mean, color_std)  # 色情報の標準化とテンソル化 
             ]),
             'val': Compose([
-                # ResizeWithAspectAndPad(input_size),
+                ResizeWithAspectAndPad(input_size),
                 # ToTensor(),  # テンソルに変換 ############ToTensorを使わない方針！つまり0-1正規化と、チャネル順入れ替えをしない方針
-                Resize(input_size), 
+                # Resize(input_size), 
                 # Normalize(color_mean, color_std)  # 色情報の標準化とテンソル化
             ])
         }
@@ -210,34 +212,6 @@ class MFNetDataset(data.Dataset):
         '''
         img, anno_class_img = self.pull_item(index)
         return img, anno_class_img
-    
-
-
-    # transformerにおいて、class ResizeWithAspectAndPad()を使用する場合はこっちじゃないとエラーを吐く
-    ## seg_test.py まで無事実行できるなら消してよし↓↓↓↓↓↓↓↓↓↓
-    # def pull_item(self, index):
-    #     '''画像のTensor形式のデータ、アノテーションを取得する'''
-
-    #     # 1. 画像読み込み（PILのまま前処理→最後にテンソル化）
-    #     image_file_path = self.img_list[index]
-    #     img_pil = Image.open(image_file_path)  # PIL.Image
-    #     # 2. アノテーション画像読み込み（PILのまま前処理→最後にテンソル化）
-    #     anno_file_path = self.anno_list[index]
-    #     anno_pil = Image.open(anno_file_path)
-
-    #     # 3. 前処理を実施（PIL.Imageのまま渡す）
-    #     img = self.transform(self.phase, img_pil)
-    #     anno_class_img = self.transform(self.phase, anno_pil)
-
-    #     # 4. テンソル化
-    #     img = to_tensor(img)  # [C,H,W] float32, 0-1
-    #     anno_class_img_np = np.array(anno_class_img)   # [H,W] or [1,H,W]
-    #     anno_class_img = torch.from_numpy(anno_class_img_np).long()
-    #     if anno_class_img.dim() == 2:
-    #         anno_class_img = anno_class_img.unsqueeze(0)
-
-    #     return img, anno_class_img
-    
 
     def pull_item(self, index):
         '''画像のTensor形式のデータ、アノテーションを取得する'''
@@ -262,6 +236,7 @@ class MFNetDataset(data.Dataset):
         # print("in dataset:torch.sum(anno_class_img_transformed)", torch.sum(anno_class_img))
 
         return img, anno_class_img
+
 
 
 if __name__ == "__main__":
