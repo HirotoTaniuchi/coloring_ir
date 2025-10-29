@@ -147,7 +147,7 @@ if __name__ == '__main__':
     # チェックポイントとログのパスを先に宣言
     str_now = now1()
     MODEL_NAME = "deeplabv3plus_resnet101"
-    DOMAIN = "rgb_ir" # 学習元データのドメイン（"ir" or "rgb" or "ir_3ch"）
+    DOMAIN = "ir" # 学習元データのドメイン（"ir" or "rgb" or "ir_3ch"）
     path_cpt = f'checkpoints/{DOMAIN}_{MODEL_NAME}_{str_now}' # 
     path_logs = f'logs/{DOMAIN}_{MODEL_NAME}_{str_now}'
     os.makedirs(path_cpt, exist_ok=True)

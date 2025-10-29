@@ -154,7 +154,7 @@ if __name__ == '__main__':
     NUM_CLASSES = 19
     OUTPUT_SRTIDE = 16
     DOMAIN = "rgb_ir"
-    PATH_TO_PTH = "/home/usrs/taniuchi/workspace/projects/coloring_ir/checkpoints/rgb_ir_deeplabv3plus_resnet101_202510071658/seg_100_70_202510071658.pth" #入力
+    PATH_TO_PTH = "/home/usrs/taniuchi/workspace/projects/coloring_ir/checkpoints/rgb_ir_deeplabv3plus_resnet101_202510071658/seg_100_50_202510071658.pth" #入力
     model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
     if DOMAIN == "ir": # IR画像が1chなので、最初の畳み込み層を変更する
         model.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
@@ -167,6 +167,10 @@ if __name__ == '__main__':
         nn.Conv2d(256, 9, kernel_size=(1, 1), stride=(1, 1))
         )
     model.load_state_dict( torch.load( PATH_TO_PTH , weights_only = False)  ) # 公式訓練済を使う時のみ['model_state']
+    for param in model.parameters():
+        param.requires_grad = False
+    model.eval()
+    
     print('ネットワーク設定完了：学習済みの重みをロードしました')
 
 

@@ -6,11 +6,12 @@
 20250227_TICCGAN/
 20250228_MFNet/
 20250507_deeplabv3_tutorial/
-CycleGAN-and-pix2pix/
+CycleGAN-and-pix2pix/wandb
 YOLO/runs/
 trash/
 
 __pycache__/
+*.jpg
 *.pyc
 *.png
 checkpoints/
