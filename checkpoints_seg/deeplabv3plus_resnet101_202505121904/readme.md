@@ -1,0 +1,3 @@
+classifierのみパラメタ解放
+
+freezerにて

@@ -9,11 +9,15 @@
 CycleGAN-and-pix2pix/wandb
 YOLO/runs/
 trash/
+model_Ugawa/
 
 __pycache__/
 *.jpg
 *.pyc
 *.png
+*.wandb
+*.pth
+events.out.tfevents.*
 checkpoints/
 logs/
 results/

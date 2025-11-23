@@ -1,0 +1,53 @@
+{
+  "os": "Linux-6.8.0-59-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.10.16",
+  "startedAt": "2025-06-05T09:57:24.564265Z",
+  "args": [
+    "--dataroot",
+    "./datasets/mfnet",
+    "--direction",
+    "AtoB",
+    "--model",
+    "pix2pix",
+    "--name",
+    "mfnet_pix2pix",
+    "--use_wandb"
+  ],
+  "program": "/var/autofs/home/hale/usrs/taniuchi/workspace/projects/coloring_ir/CycleGAN-and-pix2pix/test.py",
+  "codePath": "CycleGAN-and-pix2pix/test.py",
+  "git": {
+    "remote": "git@github.com:HirotoTaniuchi/coloring_ir.git",
+    "commit": "a548e8e3d162dd362daeb90129722fad482fed15"
+  },
+  "root": "/var/autofs/home/hale/usrs/taniuchi/workspace/projects/coloring_ir/CycleGAN-and-pix2pix",
+  "host": "raikou",
+  "executable": "/home/usrs/taniuchi/miniconda3/envs/cuda12.6/bin/python",
+  "codePathLocal": "test.py",
+  "cpu_count": 8,
+  "cpu_count_logical": 16,
+  "gpu": "NVIDIA GeForce RTX 3080",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "210241560576",
+      "used": "32748134400"
+    }
+  },
+  "memory": {
+    "total": "67323002880"
+  },
+  "cpu": {
+    "count": 8,
+    "countLogical": 16
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA GeForce RTX 3080",
+      "memoryTotal": "10737418240",
+      "cudaCores": 8704,
+      "architecture": "Ampere",
+      "uuid": "GPU-b1e88e9c-a889-1613-9a18-8de3a755c091"
+    }
+  ],
+  "cudaVersion": "12.8"
+}

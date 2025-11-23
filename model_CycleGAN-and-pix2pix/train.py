@@ -26,30 +26,6 @@ from util.visualizer import Visualizer
 
 import torch
 torch.autograd.set_detect_anomaly(True)
-import os
-try:
-    import pandas as pd
-    _HAS_PANDAS = True
-except Exception:
-    pd = None
-    _HAS_PANDAS = False
-try:
-    # Prefer tensorboardX if available (matches seg_train.py)
-    from tensorboardX import SummaryWriter  # type: ignore
-except Exception:
-    try:
-        # Fallback to PyTorch's built-in tensorboard
-        from torch.utils.tensorboard import SummaryWriter  # type: ignore
-    except Exception:
-        # Last resort no-op writer to avoid runtime failures
-        class SummaryWriter:  # type: ignore
-            def __init__(self, *args, **kwargs):
-                pass
-            def add_scalar(self, *args, **kwargs):
-                pass
-            def close(self):
-                pass
-from datetime import datetime
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
@@ -61,14 +37,6 @@ if __name__ == '__main__':
     model.setup(opt)               # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = 0                # the total number of training iterations
-
-    # Setup logging to CSV and TensorBoard (similar to seg_train.py)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_dir = os.path.join('logs', f"{opt.name}_{timestamp}")
-    os.makedirs(log_dir, exist_ok=True)
-    writer = SummaryWriter(log_dir=log_dir)
-    csv_path = os.path.join(log_dir, 'losses.csv')
-    logs = []
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
@@ -98,37 +66,6 @@ if __name__ == '__main__':
                 if opt.display_id > 0:
                     visualizer.plot_current_losses(epoch, float(epoch_iter) / dataset_size, losses)
 
-                # Record to TensorBoard and CSV
-                for k, v in losses.items():
-                    # Log each loss component against total iterations for better step-wise visualization
-                    writer.add_scalar(k, v, total_iters)
-                # Build a flat row for CSV
-                row = {
-                    'epoch': epoch,
-                    'epoch_iter': epoch_iter,
-                    'total_iters': total_iters,
-                    't_comp_per_img': t_comp,
-                    't_data': t_data,
-                }
-                row.update({k: float(v) for k, v in losses.items()})
-                logs.append(row)
-                try:
-                    if _HAS_PANDAS:
-                        pd.DataFrame(logs).to_csv(csv_path, index=False)
-                    else:
-                        import csv
-                        # Write incrementally without pandas
-                        fieldnames = list(row.keys())
-                        file_exists = os.path.exists(csv_path)
-                        with open(csv_path, 'a', newline='') as f:
-                            writer_csv = csv.DictWriter(f, fieldnames=fieldnames)
-                            if not file_exists:
-                                writer_csv.writeheader()
-                            writer_csv.writerow(row)
-                except Exception as e:
-                    # Fail-safe: don't interrupt training on logging errors
-                    print(f"[warn] failed to write CSV log: {e}")
-
             if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
                 print('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iters))
                 save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
@@ -141,9 +78,3 @@ if __name__ == '__main__':
             model.save_networks(epoch)
 
         print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
-
-    # Close TensorBoard writer
-    try:
-        writer.close()
-    except Exception:
-        pass

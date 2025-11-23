@@ -212,6 +212,7 @@ if __name__ == '__main__':
     torch.serialization.safe_globals([np.core.multiarray.scalar])
     model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
     model.load_state_dict(torch.load(PATH_TO_PTH, weights_only=False)['model_state'])
+    print("gpu_ids:", opt.gpu_ids, "device:", model.device)
     
 
     # print(model)

@@ -136,11 +136,11 @@ def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, a
 
 if __name__ == '__main__':  
     # ファイルパスリスト作成
-    imagepath = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/ugawa_ir"
+    imagepath = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/mfnet_pix2pix_640x480_segloss_20251106/fake_B"
     # imagepath = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/images_ir_3ch" #入力
     (test_img_list, test_anno_list)= make_testdatapath_list(imagepath=imagepath)
 
-    # (RGB)の色の平均値と標準偏差
+    # (RGB)の色の平均値と標準偏差 # この正規化って適正なのか？
     color_mean = (0.232, 0.267, 0.233)
     color_std = (0.173, 0.173, 0.172)
 
@@ -153,8 +153,8 @@ if __name__ == '__main__':
     MODEL_NAME = "deeplabv3plus_resnet101" #入力
     NUM_CLASSES = 19
     OUTPUT_SRTIDE = 16
-    DOMAIN = "rgb_ir"
-    PATH_TO_PTH = "/home/usrs/taniuchi/workspace/projects/coloring_ir/checkpoints/rgb_ir_deeplabv3plus_resnet101_202510071658/seg_100_50_202510071658.pth" #入力
+    DOMAIN = "rgb"
+    PATH_TO_PTH = "/home/usrs/taniuchi/workspace/projects/coloring_ir/checkpoints/rgb_deeplabv3plus_resnet101_202510012130/seg_100_100_202510012130.pth" #入力
     model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
     if DOMAIN == "ir": # IR画像が1chなので、最初の畳み込み層を変更する
         model.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)

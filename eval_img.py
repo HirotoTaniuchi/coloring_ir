@@ -88,10 +88,10 @@ def calculate_average_ssim(dir1, dir2):
 
 if __name__ == '__main__':
 
-    output_dir = "./output/ugawa_test_202502272000/AAFSTNet2andSegNet2_MFNet_full_RSGAN/test_other_latest/fake_B"
-    gt_dir = "./output/ugawa_test_202502272000/AAFSTNet2andSegNet2_MFNet_full_RSGAN/test_other_latest/real_B"
-    print(calculate_average_psnr(output_dir, gt_dir))
-    print(calculate_average_ssim(output_dir, gt_dir))
+    output_dir = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_img/white"
+    gt_dir = "/home/usrs/taniuchi/workspace/datasets/ir_seg_dataset/images_rgb"
+    print("average psnr: ",calculate_average_psnr(output_dir, gt_dir))
+    print("average ssim: ",calculate_average_ssim(output_dir, gt_dir))
 
 
     
