@@ -9,7 +9,7 @@
 CycleGAN-and-pix2pix/wandb
 YOLO/runs/
 trash/
-model_Ugawa/
+
 
 __pycache__/
 *.jpg
