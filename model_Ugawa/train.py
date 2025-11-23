@@ -96,8 +96,17 @@ if __name__ == '__main__':
             if total_steps % opt.display_freq == 0:
                 visuals = model.get_current_visuals()
                 save_result = total_steps % opt.update_html_freq == 0
-                visualizer.display_current_results(visuals, epoch, save_result, opt.colorspace, inv_norm=inv_normalize)
-
+                visualizer.display_current_results(
+                    visuals,
+                    epoch,
+                    save_result,
+                    opt.colorspace,
+                    inv_norm=inv_normalize,
+                    image_paths=data.get('A_paths', None)
+                )
+                # 追加: fake_B収集
+                if 'fake_B' in visuals:
+                    visualizer.add_epoch_fakeB_sample(visuals['fake_B'], image_paths=data.get('A_paths', None))
                 # Tensorboard
                 if opt.tensorboard:
                     tensorboard_visualize_images(writer=writer, visuals=visuals, keys=visuals.keys(), inv_norm=inv_normalize, total_steps=total_steps, batchsize=opt.batchSize, colorspace=opt.colorspace, l1_channel=opt.l1_channel)
@@ -131,6 +140,10 @@ if __name__ == '__main__':
             model.save_networks('latest')
             model.save_networks(epoch)
 
+        # 追加: エポック終了時にfake_Bグリッド生成・保存
+        inv_normalize = transforms.Normalize(mean=[-1, -1, -1], std=[2, 2, 2])
+        writer_for_grid = writer if (opt.tensorboard and 'writer' in locals()) else None
+        visualizer.save_epoch_fakeB_grid(epoch, inv_norm=inv_normalize, colorspace=opt.colorspace, writer=writer_for_grid)
 
         tqdm.write('End of epoch %d / %d \t Time Taken: %d sec' %
               (epoch, opt.niter + opt.niter_decay, time.time() - epoch_start_time))

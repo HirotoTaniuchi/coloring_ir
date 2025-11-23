@@ -49,10 +49,14 @@ if __name__ == '__main__':
         model.set_input(data)
         model.test()
         visuals = model.get_current_visuals()
+        # fake_4ch は専用ディレクトリ fake_4ch/ に保存される (skip_4ch 指定時は生成しない)
         img_path = model.get_image_paths()
         if i % 10 == 0:
             print('processing (%04d)-th image... %s' % (i, img_path))
         inv_normalize = transforms.Normalize(mean=[-1, -1, -1],std=[2, 2, 2]) 
-        save_images(webpage, visuals, img_path, iter=i, freq=freq, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, colorspace=opt.colorspace, inv_norm=inv_normalize)
+        save_images(webpage, visuals, img_path, iter=i, freq=freq,
+                    aspect_ratio=opt.aspect_ratio, width=opt.display_winsize,
+                    colorspace=opt.colorspace, inv_norm=inv_normalize,
+                    skip_reals=opt.skip_reals, skip_4ch=opt.skip_4ch)
 
     webpage.save()
