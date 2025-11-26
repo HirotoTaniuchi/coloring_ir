@@ -49,7 +49,6 @@ if __name__ == '__main__':
         model.set_input(data)
         model.test()
         visuals = model.get_current_visuals()
-        # fake_4ch は専用ディレクトリ fake_4ch/ に保存される (skip_4ch 指定時は生成しない)
         img_path = model.get_image_paths()
         if i % 10 == 0:
             print('processing (%04d)-th image... %s' % (i, img_path))

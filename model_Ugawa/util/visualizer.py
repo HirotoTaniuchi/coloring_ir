@@ -65,83 +65,113 @@ def wandb_visualize_images(visuals):
 
 # created by the guy who writes original codes
 # save image to the disk
-def save_images(webpage, visuals, image_path, iter, freq, inv_norm, aspect_ratio=1.0, width=256, colorspace='RGB', skip_reals=False, skip_4ch=False):
-    inv_norm = inv_norm    # transforms.Normalize(mean=[-1, -1, -1],std=[2, 2, 2])
+def save_images(webpage, visuals, image_path, iter, freq, inv_norm, aspect_ratio=1.0, width=256, colorspace='RGB',
+                skip_reals=False, skip_4ch=False):
+    # 変更: ラベルでディレクトリ判定 / ファイル名からラベル除去 / fake_4ch生成 / skipフラグ対応
     image_dir_other, image_dir_fake_B, image_dir_real_A, image_dir_real_B = webpage.get_image_dir()
-    # 追加: fake_4ch ディレクトリ生成
+    # fake_4ch ディレクトリ生成
     image_dir_fake_4ch = os.path.join(os.path.dirname(image_dir_fake_B), 'fake_4ch')
     os.makedirs(image_dir_fake_4ch, exist_ok=True)
+
     short_path = ntpath.basename(image_path[0])
     name = os.path.splitext(short_path)[0]
     if iter % freq == 0:
         webpage.add_header(name)
     ims, txts, links = [], [], []
 
+    # 保存 (real_A / fake_B / real_B / その他)
     for label, im_data in visuals.items():
         if skip_reals and label in ('real_A', 'real_B'):
             continue
-        im_data = inv_norm(im_data)
-        im_data = change_colorspace_to_rgb(im_data, colorspace)
-        im = util.tensor2im(im_data)
-        image_name = '%s_%s.png' % (name, label)
-        if 'fake_B' in image_name:
+        im_proc = inv_norm(im_data)
+        im_proc = change_colorspace_to_rgb(im_proc, colorspace)
+        im = util.tensor2im(im_proc)
+        image_name = f'{name}.png'  # ラベル除去
+        if label == 'fake_B':
             save_path = os.path.join(image_dir_fake_B, image_name)
-        elif 'real_A' in image_name:
+        elif label == 'real_A':
             save_path = os.path.join(image_dir_real_A, image_name)
-        elif 'real_B' in image_name:
+        elif label == 'real_B':
             save_path = os.path.join(image_dir_real_B, image_name)
         else:
-            save_path = os.path.join(image_dir_other, image_name)
+            save_path = os.path.join(image_dir_other, f'{name}_{label}.png')  # その他は識別のためラベル残す
 
         h, w, _ = im.shape
         if aspect_ratio > 1.0:
-            #im = imresize(im, (h, int(w * aspect_ratio)), interp='bicubic')
             im = np.array(Image.fromarray(im).resize((h, int(w * aspect_ratio)), resample=4))
-
         if aspect_ratio < 1.0:
-            #im = imresize(im, (int(h / aspect_ratio), w), interp='bicubic')
             im = np.array(Image.fromarray(im).resize((int(h / aspect_ratio), w), resample=4))
 
         util.save_image(im, save_path)
         if iter % freq == 0:
-            ims.append(image_name)
+            # HTML表示用 (その他はラベル付きで示す)
+            show_name = image_name if label in ('fake_B', 'real_A', 'real_B') else f'{name}_{label}.png'
+            ims.append(show_name)
             txts.append(label)
-            links.append(image_name)
+            links.append(show_name)
+
+    # fake_4ch生成 (fake_B + real_A → RGBA) make4ch.py仕様準拠
+    if (not skip_4ch) and ('fake_B' in visuals) and ('real_A' in visuals):
+        try:
+            fake_B_t = inv_norm(visuals['fake_B'])
+            fake_B_t = change_colorspace_to_rgb(fake_B_t, colorspace)
+            real_A_t = inv_norm(visuals['real_A'])
+            # Tensor → NumPy
+            fake_B_np = util.tensor2im(fake_B_t)  # (H,W,3) 期待
+            real_A_np = util.tensor2im(real_A_t)  # (H,W,1) または (H,W,3) の可能性あり
+
+            # 形状/チャネル判定と1ch抽出
+            single = None
+            if real_A_np.ndim == 2:
+                single = real_A_np
+            elif real_A_np.ndim == 3:
+                if real_A_np.shape[2] == 1:
+                    single = real_A_np[:, :, 0]
+                elif real_A_np.shape[2] == 3:
+                    # 3chだが全チャネル同一なら1chとして扱う
+                    c0 = real_A_np[:, :, 0]
+                    c1 = real_A_np[:, :, 1]
+                    c2 = real_A_np[:, :, 2]
+                    if np.array_equal(c0, c1) and np.array_equal(c0, c2):
+                        single = c0
+                    else:
+                        print(f'[fake_4ch skip] real_A が3chだが各チャネルが一致しない: {real_A_np.shape}')
+                else:
+                    print(f'[fake_4ch skip] real_A 不正チャネル数: {real_A_np.shape}')
+            else:
+                print(f'[fake_4ch skip] real_A 形状不明: {real_A_np.shape}')
+
+            # fake_B の基本検証
+            if fake_B_np.ndim != 3 or fake_B_np.shape[2] != 3:
+                print(f'[fake_4ch skip] fake_B 不正形状: {fake_B_np.shape}')
+            elif single is not None:
+                if fake_B_np.shape[0:2] != single.shape[0:2]:
+                    print(f'[fake_4ch skip] サイズ不一致: fake_B={fake_B_np.shape} real_A(single)={single.shape}')
+                else:
+                    # uint8保証 (make4ch.pyと同等)
+                    def _to_u8(arr):
+                        if arr.dtype == np.uint8:
+                            return arr
+                        if np.issubdtype(arr.dtype, np.floating):
+                            return (np.clip(arr, 0.0, 1.0) * 255.0).round().astype(np.uint8)
+                        return np.clip(arr, 0, 255).astype(np.uint8)
+                    fake_B_u8 = _to_u8(fake_B_np)
+                    single_u8 = _to_u8(single)
+                    rgba = np.empty((fake_B_u8.shape[0], fake_B_u8.shape[1], 4), dtype=np.uint8)
+                    rgba[:, :, :3] = fake_B_u8[:, :, :3]
+                    rgba[:, :, 3] = single_u8
+                    out_path_4ch = os.path.join(image_dir_fake_4ch, f'{name}.png')
+                    Image.fromarray(rgba, mode='RGBA').save(out_path_4ch)
+                    if iter % freq == 0:
+                        ims.append(f'{name}.png')
+                        txts.append('fake_4ch')
+                        links.append(f'{name}.png')
+        except Exception as e:
+            print(f'[fake_4ch exception] {name}: {e}')
+
     if iter % freq == 0:
         webpage.add_images(ims, txts, links, width=width)
-    # 追加: fake_4ch 保存 (fake_B + TIR(real_A)) 条件分岐、保存先を image_dir_fake_4ch に変更
-    if (not skip_4ch) and 'fake_B' in visuals and 'real_A' in visuals:
-        try:
-            fake_B = inv_norm(visuals['fake_B'])              # (N,3,H,W) 正規化解除
-            fake_B = change_colorspace_to_rgb(fake_B, colorspace)  # 擬似カラー RGB 化
-            tir = visuals['real_A']                           # (N,C,H,W)
-            # サイズ合わせ
-            h, w = fake_B.shape[2], fake_B.shape[3]
-            if tir.shape[2] != h or tir.shape[3] != w:
-                tir = torch.nn.functional.interpolate(tir, size=(h, w), mode='bilinear', align_corners=False)
-            # 4番目チャネル生成 (1chならそのまま / 複数なら平均)
-            if tir.shape[1] == 1:
-                tir_ch = tir
-            else:
-                tir_ch = tir.mean(dim=1, keepdim=True)
-            # 結合 (N,4,H,W)
-            fake_4ch = torch.cat([fake_B[:, :3, :, :], tir_ch], dim=1)
-            # 0..1 クリップ → 0..255
-            rgba = fake_4ch[0].detach().cpu().clamp(0, 1).numpy()
-            rgba = (rgba * 255).astype(np.uint8)              # (4,H,W)
-            rgba = np.transpose(rgba, (1, 2, 0))              # (H,W,4)
-            image_name = f'{name}_fake_4ch.png'
-            save_path = os.path.join(image_dir_fake_4ch, image_name)  # 変更: 専用ディレクトリへ保存
-            Image.fromarray(rgba, mode='RGBA').save(save_path)
-            if iter % freq == 0:
-                ims.append(image_name)
-                txts.append('fake_4ch')
-                links.append(image_name)
-                # HTML へ再追加 (ヘッダは既に追加済みなので更新だけ)
-                webpage.add_images(ims, txts, links, width=width)
-        except Exception as e:
-            print(f'failed to create/save fake_4ch for {name}: {e}')
-
+    
 # save image to the disk
 def save_images2(webpage, visuals, image_path, aspect_ratio=1.0, width=256):
     image_dir = webpage.get_image_dir()
@@ -170,8 +200,6 @@ class Visualizer():
         self.opt = opt
         self.saved = False
         self.epoch_basenames = {}  # 追加: epochごとのbasename保存
-        self.epoch_fakeB_samples = []  # 追加: グリッド用fake_Bテンソル
-        self.epoch_fakeB_sample_names = []  # 追加: グリッドに使用した元画像名
         if self.display_id > 0:
             import visdom
             self.ncols = opt.display_ncols
@@ -189,46 +217,6 @@ class Visualizer():
 
     def reset(self):
         self.saved = False
-
-    def add_epoch_fakeB_sample(self, fake_B, image_paths=None):
-        """エポック中のfake_Bサンプルを最大9枚収集し元画像名も記録"""
-        try:
-            if len(self.epoch_fakeB_samples) < 9:
-                self.epoch_fakeB_samples.append(fake_B[0].detach().cpu())
-                if image_paths and len(image_paths) > 0:
-                    short = ntpath.basename(image_paths[0])
-                    base = os.path.splitext(short)[0]
-                else:
-                    base = f'unknown_{len(self.epoch_fakeB_samples)}'
-                self.epoch_fakeB_sample_names.append(base)
-        except Exception:
-            pass
-
-    def save_epoch_fakeB_grid(self, epoch, inv_norm, colorspace, writer=None):
-        """収集したfake_Bから3x3グリッド生成し画像とソース名リストを保存"""
-        if not self.epoch_fakeB_samples:
-            return
-        imgs = torch.stack(self.epoch_fakeB_samples)  # (k,C,H,W)
-        imgs = inv_norm(imgs)
-        imgs = change_colorspace_to_rgb(imgs, colorspace)
-        grid = torchvision.utils.make_grid(imgs, nrow=3)
-        grid_np = util.tensor2im(grid)
-        filename = f'epoch{epoch:03d}_fake_B_grid.png'
-        save_path = os.path.join(self.img_dir, filename)
-        util.save_image(grid_np, save_path)
-        # 使用した元画像名をテキストで保存 (web配下)
-        sources_path = os.path.join(self.web_dir, f'epoch{epoch:03d}_fake_B_grid_sources.txt')
-        try:
-            with open(sources_path, 'w', encoding='utf-8') as f:
-                for name in self.epoch_fakeB_sample_names:
-                    f.write(name + '\n')
-        except Exception as e:
-            print(f'failed to write sources list for epoch {epoch}: {e}')
-        if writer is not None:
-            writer.add_image('fake_B_grid', grid, global_step=epoch)
-            writer.flush()
-        self.epoch_fakeB_samples = []
-        self.epoch_fakeB_sample_names = []
 
     # |visuals|: dictionary of images to display or save
     def display_current_results(self, visuals, epoch, save_result, colorspace, inv_norm, image_paths=None):  # 追加: image_paths
@@ -315,18 +303,6 @@ class Visualizer():
                     ims.append(img_path)
                     txts.append(label)
                     links.append(img_path)
-                # 追加: fake_Bグリッドが存在する場合は追加
-                grid_name = f'epoch{n:03d}_fake_B_grid.png'
-                if os.path.exists(os.path.join(self.img_dir, grid_name)):
-                    ims.append(grid_name)
-                    txts.append('fake_B_grid')
-                    links.append(grid_name)
-                # 追加: ソース名テキストがあればリンクとして追加（任意表示）
-                sources_txt = f'epoch{n:03d}_fake_B_grid_sources.txt'
-                if os.path.exists(os.path.join(self.web_dir, sources_txt)):
-                    ims.append(sources_txt)
-                    txts.append('fake_B_grid_sources')
-                    links.append(sources_txt)
                 webpage.add_images(ims, txts, links, width=self.win_size)
             webpage.save()
 
@@ -355,3 +331,50 @@ class Visualizer():
         print(message)
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)
+
+    def add_epoch_fakeB_sample(self, fake_B_tensor, image_paths=None):
+        """実装途中。現在使用していない。削除してもおけ"""
+        # 追加: エポック用 fake_B サンプル登録 (batch先頭のみ)
+        try:
+            path_name = 'unknown'
+            if image_paths and len(image_paths) > 0:
+                path_name = os.path.splitext(ntpath.basename(image_paths[0]))[0]
+            # shape: (N,C,H,W) を想定 → 先頭
+            self._temp_fakeB_samples.append((fake_B_tensor[0].detach().cpu(), path_name))
+        except Exception as e:
+            print(f'[add_epoch_fakeB_sample skip] {e}')
+
+    def save_epoch_fakeB_grid(self, epoch, inv_norm, colorspace, writer=None):
+        """実装途中。現在使用していない。削除してもおけ"""
+        # 追加: 最大9枚 → 3x3 グリッド保存 + ソース名テキスト
+        if len(self._temp_fakeB_samples) == 0:
+            return
+        samples = self._temp_fakeB_samples[:9]
+        tensors = []
+        names = []
+        for t, nm in samples:
+            try:
+                x = inv_norm(t)
+                x = change_colorspace_to_rgb(x, colorspace)
+                tensors.append(x.unsqueeze(0))  # (1,C,H,W)
+                names.append(nm)
+            except Exception as e:
+                print(f'[fakeB_grid convert skip] {nm}: {e}')
+        if len(tensors) == 0:
+            self._temp_fakeB_samples.clear()
+            return
+        batch = torch.cat(tensors, dim=0)  # (K,C,H,W)
+        grid = torchvision.utils.make_grid(batch, nrow=3)
+        # 保存
+        if self.use_html:
+            grid_np = util.tensor2im(grid)
+            grid_path = os.path.join(self.img_dir, f'epoch{epoch:03d}_fakeB_grid.png')
+            util.save_image(grid_np, grid_path)
+            list_path = os.path.join(self.img_dir, f'epoch{epoch:03d}_fakeB_grid_sources.txt')
+            with open(list_path, 'w', encoding='utf-8') as f:
+                for nm in names:
+                    f.write(nm + '\n')
+        if writer is not None:
+            writer.add_image('epoch_fakeB_grid', grid, global_step=epoch)
+            writer.flush()
+        self._temp_fakeB_samples.clear()

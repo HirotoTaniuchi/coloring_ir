@@ -10,7 +10,7 @@ class TestOptions(BaseOptions):
         parser.add_argument('--phase', type=str, default='NU/test_-10/', help='train, val, test, etc')
         parser.add_argument('--which_epoch', type=str, default='latest', help='which epoch to load? set to latest to use latest cached model')
         parser.add_argument('--how_many', type=int, default=100, help='how many test images to run')
-        parser.add_argument('--skip_reals', action='store_true', help='test時にreal_Aとreal_Bを保存しない')
-        parser.add_argument('--skip_4ch', action='store_true', help='fake_4chを保存しない')
+        parser.add_argument('--skip_reals', action='store_true', help='real_A / real_B を保存しない')
+        parser.add_argument('--skip_4ch', action='store_true', help='fake_4ch (RGBA合成) を生成・保存しない')
         self.isTrain = False
         return parser
