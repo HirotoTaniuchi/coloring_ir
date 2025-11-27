@@ -285,7 +285,7 @@ def create_bbox_mask_from_bbox(img_shape, bboxes):
     sal_mask = torch.zeros(img_shape)
     # print("bboxes.shape",bboxes.shape)
     # print("bboxes",bboxes)
-    if not torch.all(bboxes == 0):
+    if bboxes != 0:
         for bbox in bboxes:
             sal_mask[..., bbox[1]:bbox[3], bbox[0]:bbox[2]] = 1
             #sal_mask[..., 0:1, 0:1] = 1

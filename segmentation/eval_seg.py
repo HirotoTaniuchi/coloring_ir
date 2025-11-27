@@ -155,6 +155,10 @@ def eval_seg(pred_dir, target_dir, file_list):
         summary_line = ';'.join(str(v) for v in summary_values)
         f.write(summary_line + "\n")
 
+    # コンソールにもサマリ行を表示
+    print("# Line for excel")
+    print(summary_line)
+
 
 if __name__ == "__main__":
     pred_dir = "/home/usrs/taniuchi/workspace/projects/coloring_ir/output_seg/deeplabv3plus_mobilenet_test_202505151144/predict"

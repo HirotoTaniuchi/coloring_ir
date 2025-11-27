@@ -50,7 +50,7 @@ def colorize_image(input_path, output_path):
 
 
 
-def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, anno_list= None):
+def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, anno_list= None, savedir2=None):
     """
     """
 
@@ -69,15 +69,18 @@ def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, a
     image_file_path = img_list[img_index]
     img_original = Image.open(image_file_path)   # [高さ][幅][色RGB]
     img_width, img_height = img_original.size
-    img_original.save(savedir + f"/original/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
-
+    original_path = savedir + f"/original/{os.path.splitext(os.path.basename(image_file_path))[0]}.png"
+    img_original.save(original_path)
+    if savedir2 and savedir2 != savedir:
+        img_original.save(savedir2 + f"/original/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
 
     # 2. 正解アノテーション画像の表示
     anno_file_path = anno_list[img_index]
     out_putpath = savedir + f"/target/{os.path.splitext(os.path.basename(image_file_path))[0]}.png"
     colorize_image(anno_file_path, out_putpath)
-
-
+    if savedir2 and savedir2 != savedir:
+        out_putpath2 = savedir2 + f"/target/{os.path.splitext(os.path.basename(image_file_path))[0]}.png"
+        colorize_image(anno_file_path, out_putpath2)
 
     # 3. モデル出力(0〜8クラス)
     model.eval()
@@ -91,8 +94,10 @@ def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, a
     # print(img_index, "y.shape", y.shape, collections.Counter(y.flatten()))
     anno_class_img_0to8 = Image.fromarray(np.uint8(y)) #mode =Pがいらなかった！
     anno_class_img_0to8 = anno_class_img_0to8.resize((img_width, img_height), Image.NEAREST)
-    anno_class_img_0to8.save(savedir + f"/predict/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
-
+    pred_idx_path = savedir + f"/predict/{os.path.splitext(os.path.basename(image_file_path))[0]}.png"
+    anno_class_img_0to8.save(pred_idx_path)
+    if savedir2 and savedir2 != savedir:
+        anno_class_img_0to8.save(savedir2 + f"/predict/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
 
     # 4. PSPNetの出力から最大クラスを求め、カラーパレット形式にし、画像サイズを元に戻す
     outputs = model(x)
@@ -102,8 +107,10 @@ def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, a
     anno_class_img = Image.fromarray(np.uint8(yrgb), mode="P") # *30はいらない!デバッグ2025/05/10
     anno_class_img = anno_class_img.resize((img_width, img_height), Image.NEAREST)
     anno_class_img.putpalette(p_palette) 
-    anno_class_img.save(savedir + f"/predictrgb/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
-
+    pred_rgb_path = savedir + f"/predictrgb/{os.path.splitext(os.path.basename(image_file_path))[0]}.png"
+    anno_class_img.save(pred_rgb_path)
+    if savedir2 and savedir2 != savedir:
+        anno_class_img.save(savedir2 + f"/predictrgb/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
 
     # 5. 画像を透過させて重ねる
     trans_img = Image.new('RGBA', anno_class_img.size, (0, 0, 0, 0))
@@ -122,10 +129,10 @@ def predict_savefig1(model, dataset, img_index, savedir= None, img_list= None, a
                 trans_img.putpixel((x, y), (r, g, b, 200))
                 # 200は透過度の大きさを指定している
     result = Image.alpha_composite(img_original.convert('RGBA'), trans_img)
-    result.save(savedir + f"/trans/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
-
-
-
+    trans_path = savedir + f"/trans/{os.path.splitext(os.path.basename(image_file_path))[0]}.png"
+    result.save(trans_path)
+    if savedir2 and savedir2 != savedir:
+        result.save(savedir2 + f"/trans/{os.path.splitext(os.path.basename(image_file_path))[0]}.png")
 
     return img_original, anno_class_img, result
 
@@ -145,6 +152,7 @@ def parse_args():
     p.add_argument('--color_mean', type=str, default='0.232,0.267,0.233')
     p.add_argument('--color_std', type=str, default='0.173,0.173,0.172')
     p.add_argument('--save_dir', type=str, default=None)
+    p.add_argument('--save_dir_2', type=str, default=None)  # 追加: セカンダリ保存先
     p.add_argument('--file_list', type=str, default=None, help='評価用 list ファイル')
     p.add_argument('--target_dir', type=str, default=None, help='GT ラベルディレクトリ')
     p.add_argument('--no_eval', action='store_true')
@@ -200,30 +208,53 @@ if __name__ == '__main__':
     model.eval()
     print('ネットワーク設定完了：学習済みの重みをロードしました')
 
+    # 保存先の作成
     save_dir = args.save_dir or f"./output_seg/{MODEL_NAME}_{now1()}"
     os.makedirs(save_dir, exist_ok=True)
     for d in ["original", "predict", "predictrgb", "target", "trans"]:
         os.makedirs(os.path.join(save_dir, d), exist_ok=True)
 
+    # 追加の保存先(save_dir_2)が指定された場合は同様に作成
+    save_dir_2 = args.save_dir_2
+    if save_dir_2 and save_dir_2 != save_dir:
+        os.makedirs(save_dir_2, exist_ok=True)
+        for d in ["original", "predict", "predictrgb", "target", "trans"]:
+            os.makedirs(os.path.join(save_dir_2, d), exist_ok=True)
+
+    # readme.md を両方に作成
+    readme_body = (
+        "# Segmentation Test 設定情報\n"
+        f"- imagepath: {imagepath}\n"
+        f"- MODEL_NAME: {MODEL_NAME}\n"
+        f"- NUM_CLASSES: {NUM_CLASSES}\n"
+        f"- OUTPUT_STRIDE: {OUTPUT_SRTIDE}\n"
+        f"- PATH_TO_PTH: {PATH_TO_PTH}\n"
+    )
     readme_path = os.path.join(save_dir, "readme.md")
     if not os.path.exists(readme_path):
         with open(readme_path, "w") as f:
-            f.write("# Segmentation Test 設定情報\n")
-            f.write(f"- imagepath: {imagepath}\n")
-            f.write(f"- MODEL_NAME: {MODEL_NAME}\n")
-            f.write(f"- NUM_CLASSES: {NUM_CLASSES}\n")
-            f.write(f"- OUTPUT_STRIDE: {OUTPUT_SRTIDE}\n")
-            f.write(f"- PATH_TO_PTH: {PATH_TO_PTH}\n")
+            f.write(readme_body)
+    if save_dir_2 and save_dir_2 != save_dir:
+        readme_path2 = os.path.join(save_dir_2, "readme.md")
+        if not os.path.exists(readme_path2):
+            with open(readme_path2, "w") as f:
+                f.write(readme_body)
 
     for i in tqdm.tqdm(range(len(val_dataset))):
         predict_savefig1(model, val_dataset, img_index=i,
-                         savedir=save_dir, img_list=test_img_list, anno_list=test_anno_list)
+                         savedir=save_dir, img_list=test_img_list, anno_list=test_anno_list, savedir2=save_dir_2)
     print("Segmentation Test 完了！")
 
+    # 評価はメイン保存先のみで実施
     if (not args.no_eval) and args.file_list and args.target_dir:
         eval_seg(pred_dir=save_dir + "/predict",
                  target_dir=args.target_dir,
                  file_list=args.file_list)
+        # save_dir_2 が存在し、かつ save_dir と異なる場合のみ評価
+        if save_dir_2 and (save_dir_2 != save_dir):
+            eval_seg(pred_dir=save_dir_2 + "/predict",
+                     target_dir=args.target_dir,
+                     file_list=args.file_list)
     else:
         print("評価をスキップしました (--no_eval か file_list/target_dir 未指定)")
 

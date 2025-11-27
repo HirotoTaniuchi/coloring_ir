@@ -15,7 +15,7 @@ import yaml
 from now import now1, now2
 from seg_dataloader import make_datapath_list, DataTransform, MFNetDataset
 from seg_loss import SegLoss
-from DeepLabV3Plus_Pytorch import network
+from model_DeepLabV3Plus_Pytorch import network
 
 def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, model_name, num_epochs, n_layers=50, gpu_id=0, path_cpt=None, path_logs=None):
     """
@@ -75,6 +75,23 @@ def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, model_na
 
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs_out = net(imges)
+
+                    # 追加: 出力をターゲットの空間サイズに合わせる（必要時のみ）
+                    def _align_to_target(outputs, target):
+                        th, tw = target.shape[-2], target.shape[-1]
+                        def _resize(x):
+                            return F.interpolate(x, size=(th, tw), mode='bilinear', align_corners=False) \
+                                   if isinstance(x, torch.Tensor) and x.dim() == 4 and (x.shape[-2] != th or x.shape[-1] != tw) else x
+                        if isinstance(outputs, torch.Tensor):
+                            return _resize(outputs)
+                        if isinstance(outputs, (list, tuple)):
+                            return type(outputs)(_resize(o) if isinstance(o, torch.Tensor) else o for o in outputs)
+                        if isinstance(outputs, dict):
+                            return {k: _resize(v) if isinstance(v, torch.Tensor) else v for k, v in outputs.items()}
+                        return outputs
+
+                    outputs_out = _align_to_target(outputs_out, anno_class_imges)
+
                     loss = criterion(outputs_out, anno_class_imges.long()) / batch_multiplier
 
                     if phase == 'train':
@@ -165,6 +182,9 @@ def parse_args():
     p.add_argument('--input_size', type=int, default=600)
     p.add_argument('--aux_weight', type=float, default=0.4)
     p.add_argument('--save_yaml', action='store_true')
+    # 追加: rootpath直下の画像ディレクトリ名を明示指定（例: images256_ir_str / images256_rgb_str）
+    p.add_argument('--image_dir_name', type=str, default=None,
+                   help='rootpath 直下の画像ディレクトリ名を明示指定（未指定時は images_<domain> を使用）')
     return p.parse_args()
 
 def _str_to_tuple_f(s):
@@ -187,7 +207,8 @@ if __name__ == '__main__':
 
     # データパス
     rootpath = args.rootpath
-    imagepath = ("images_" + DOMAIN)  # 従来ロジック維持
+    # 明示指定があればそれを、無ければ従来ロジック
+    imagepath = args.image_dir_name or ("im" + DOMAIN)
     print("imagepath:", imagepath)
     train_img_list, train_anno_list, val_img_list, val_anno_list = make_datapath_list(rootpath=rootpath, image_path=imagepath)
 
@@ -207,10 +228,13 @@ if __name__ == '__main__':
     model = network.modeling.__dict__[MODEL_NAME](num_classes=args.num_classes, output_stride=args.output_stride)
     # 公式学習済み形式か自前かの差異に合わせ try
     state = torch.load(args.pretrained_path, weights_only=False)
-    if 'model_state' in state:
-        model.load_state_dict(state['model_state'])
-    else:
-        model.load_state_dict(state)
+    sd = state['model_state'] if 'model_state' in state else state
+    # クラス数が異なる最終層（1x1 conv）のパラメータを除外
+    sd_filtered = {k: v for k, v in sd.items() if not k.startswith('classifier.classifier.3')}
+    # ロード（不足分は許容）
+    missing, unexpected = model.load_state_dict(sd_filtered, strict=False)
+    if missing or unexpected:
+        print(f"state_dict load (strict=False): missing={missing}, unexpected={unexpected}")
 
     # 最初の conv 差し替え
     if DOMAIN == "ir":
@@ -241,6 +265,7 @@ if __name__ == '__main__':
 
     if args.save_yaml:
         config = {
+            "image_dir_name": imagepath,
             "rootpath": rootpath,
             "DOMAIN": DOMAIN,
             "gpu_id": args.gpu_id,

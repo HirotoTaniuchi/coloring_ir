@@ -14,7 +14,7 @@ import yaml
 from now import now1, now2
 from seg_dataloader import make_datapath_list, DataTransform, MFNetDataset
 from seg_loss import SegLoss
-from DeepLabV3Plus_Pytorch import network
+from model_DeepLabV3Plus_Pytorch import network
 
 def train_model(net, dataloaders_dict, criterion, scheduler, optimizer, model_name, num_epochs, n_layers=50, gpu_id=0, path_cpt=None, path_logs=None):
     """
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     str_now = now1()
     MODEL_NAME = "deeplabv3plus_resnet101"
     DOMAIN = "ir" # 学習元データのドメイン（"ir" or "rgb" or "ir_3ch"）
-    path_cpt = f'checkpoints/{DOMAIN}_{MODEL_NAME}_{str_now}' # 
+    path_cpt = f'checkpoints_seg/ver2-3{DOMAIN}_{MODEL_NAME}_{str_now}' # 
     path_logs = f'logs/{DOMAIN}_{MODEL_NAME}_{str_now}'
     os.makedirs(path_cpt, exist_ok=True)
     os.makedirs(path_logs, exist_ok=True)
@@ -165,7 +165,7 @@ if __name__ == '__main__':
         "MODEL_NAME": MODEL_NAME,
         "NUM_CLASSES": 19,
         "OUTPUT_SRTIDE": 16,
-        "PATH_TO_PTH": "/home/usrs/taniuchi/workspace/projects/coloring_ir/DeepLabV3Plus_Pytorch/checkpoints/best_deeplabv3plus_resnet101_cityscapes_os16.pth",
+        "PATH_TO_PTH": "/home/usrs/taniuchi/workspace/projects/coloring_ir/model_DeepLabV3Plus_Pytorch/checkpoints/best_deeplabv3plus_resnet101_cityscapes_os16.pth",
         "num_epochs": 100,
         "optimizer": {
             "lr": 1e-3,
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     torch.serialization.safe_globals([np.core.multiarray.scalar])
     model = network.modeling.__dict__[MODEL_NAME](num_classes=NUM_CLASSES, output_stride=OUTPUT_SRTIDE)
     model.load_state_dict(torch.load(PATH_TO_PTH, weights_only=False)['model_state'])
-    print("gpu_ids:", opt.gpu_ids, "device:", model.device)
+    # print("gpu_ids:", gpu_id, "device:", model.device)
     
 
     # print(model)

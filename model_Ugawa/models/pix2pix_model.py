@@ -227,7 +227,7 @@ class Pix2PixModel(BaseModel):
             self.seg = input['seg'].to(self.device)
         # instanceをbboxの大きさに切り出し
         self.bbox_mask = myutl.create_bbox_mask_from_bbox(self.real_A[:, 0:1, ...].shape, bboxes).to(self.device)
-        if not torch.all(bboxes == 0) and (self.opt.w_gan_inst > 0 or self.opt.w_l1_inst > 0):
+        if bboxes != 0 and (self.opt.w_gan_inst > 0 or self.opt.w_l1_inst > 0):
             self.real_A_inst, self.real_A_bg = myutl.create_inst_images(self.real_A, bboxes)
             self.real_A_inst = self.real_A_inst.to(self.device)
             self.real_A_bg = self.real_A_bg.to(self.device)
@@ -455,7 +455,7 @@ class Pix2PixModel(BaseModel):
         assert not torch.isnan(self.fake_B).any(), 'self.fake_Bにnanが含まれています。'
 
         # bboxがあるとき(self.opt.stage == 'full'のとき)はinstance切り出しをする
-        if not torch.all(bboxes == 0) and (self.opt.w_gan_inst > 0 or self.opt.w_l1_inst > 0):
+        if bboxes != 0 and (self.opt.w_gan_inst > 0 or self.opt.w_l1_inst > 0):
             self.fake_B_inst, self.fake_B_bg = myutl.create_inst_images(self.fake_B, bboxes)
             self.fake_B_inst = self.fake_B_inst.to(self.device)
             self.fake_B_bg = self.fake_B_bg.to(self.device)
