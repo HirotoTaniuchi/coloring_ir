@@ -29,7 +29,7 @@ FINESIZE=256   # クロップサイズ
 TRANSFORM="randomcrop"    # クロップの方式 [randomcrop, centercrop]
 
 # 重みなど
-batchSize=4
+batchSize=1
 L1="l1"         # コンテンツ損失として使用するロスの種類：論文は'l1' ['l1', 'charbonnier', 'PatchNCE']
 W_L1=1          # --w_l1 (float) default:1
 W_GAN=0.03      # --gan (float) default:0.03
